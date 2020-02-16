@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
+<title> webrtc test  </title>
+<style type="text/css">
+	.room {
+		cursor: pointer;
+	}
+	div.select {
+      display: inline-block;
+      margin: 0 0 1em 0;
+    }
+</style>
+
+
+<script type='text/javascript'>
+
+    window.localStorage.setItem('debug', '*');
+
+    let videoElement;
+
+    async function connect() 
+    {
+
+        videoElement = document.getElementById('video_container');
+        var pc = new RTCPeerConnection();
+
+        await pc.addTransceiver('audio', {direction:'recvonly'});
+        await pc.addTransceiver('video', {direction:'recvonly'});
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        pc.ontrack = (event) => {
+            console.dir(event);
+            setTimeout(() => {
+                if (videoElement.srcObject) {
+                    return
+                }
+                let stream = event.streams[0]
+                videoElement.srcObject = stream;
+            },0)
+        }
+
+        const data = {
+            streamurl: 'fafafafa',
+            sdp: offer.sdp
+        }
+
+        let res = await fetch('http://127.0.0.1:8000/api/pullstream', {
+            method: 'post',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+
+        console.dir(res)
+        let ret = await res.json()
+
+        console.dir(ret)
+
+        const { sdp, sessionid } = ret.d 
+
+        let answer = new RTCSessionDescription({
+            type: 'answer',
+            sdp: sdp
+        })
+
+        await pc.setRemoteDescription(answer);
+
+    }
+
+</script>
+
+</head>
+<body >
+	<h1>RTCLive Demo</h1>
+	<br/>
+
+	<div id="conference">
+		videos:
+		<br />
+		<div id="container">
+            <video id="video_container" playsinline controls autoplay muted width="640" height="480"></video>
+        </div>
+        <br/>
+
+        <button onclick="connect()">pullstream</button>
+	</div>
+</body>
+
+
+</html>
