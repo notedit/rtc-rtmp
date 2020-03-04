@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/notedit/gst"
+	//"github.com/notedit/gst"
 	"github.com/notedit/rtmp-lib"
 	"github.com/notedit/rtmp-lib/aac"
 	"github.com/notedit/rtmp-lib/av"
@@ -22,9 +22,9 @@ type RtmpRtcStreamer struct {
 	streams        []av.CodecData
 	videoCodecData h264.CodecData
 	audioCodecData aac.CodecData
-	pipeline       *gst.Pipeline
-	audiosrc       *gst.Element
-	audiosink      *gst.Element
+	//pipeline       *gst.Pipeline
+	//audiosrc       *gst.Element
+	//audiosink      *gst.Element
 	adtsheader     []byte
 	spspps         bool
 
@@ -45,14 +45,14 @@ type RtmpRtcStreamer struct {
 
 func NewRtmpRtcStreamer(streamURL string) (*RtmpRtcStreamer, error) {
 
-	pipeline, err := gst.ParseLaunch(aac2opus_pipeline)
+	//pipeline, err := gst.ParseLaunch(aac2opus_pipeline)
+	//
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	if err != nil {
-		return nil, err
-	}
-
-	audiosrc := pipeline.GetByName("appsrc")
-	pipeline.SetState(gst.StatePlaying)
+	//audiosrc := pipeline.GetByName("appsrc")
+	//pipeline.SetState(gst.StatePlaying)
 
 	config := webrtc.Configuration{
 		ICEServers:   []webrtc.ICEServer{},
@@ -89,7 +89,7 @@ func NewRtmpRtcStreamer(streamURL string) (*RtmpRtcStreamer, error) {
 	peerConnection.AddTransceiverFromTrack(videoTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 
 	rtmp2rtc := &RtmpRtcStreamer{}
-	rtmp2rtc.audiosrc = audiosrc
+	//rtmp2rtc.audiosrc = audiosrc
 	rtmp2rtc.pc = peerConnection
 	rtmp2rtc.adtsheader = make([]byte, 7)
 	rtmp2rtc.audioTrack = audioTrack
@@ -148,7 +148,7 @@ func (r *RtmpRtcStreamer) Close() {
 
 	r.pc.Close()
 	r.conn.Close()
-	r.pipeline.SetState(gst.StateNull)
+	//r.pipeline.SetState(gst.StateNull)
 }
 
 func (r *RtmpRtcStreamer) startpull() {
@@ -227,7 +227,7 @@ func (r *RtmpRtcStreamer) startpull() {
 			aac.FillADTSHeader(r.adtsheader, r.audioCodecData.Config, 1024, len(packet.Data))
 			adtsbuffer = append(adtsbuffer, r.adtsheader...)
 			adtsbuffer = append(adtsbuffer, packet.Data...)
-			r.audiosrc.PushBuffer(adtsbuffer)
+			//r.audiosrc.PushBuffer(adtsbuffer)
 			//fmt.Println("audio ====", samples)
 			r.lastAudioTime = packet.Time
 		}
