@@ -3,16 +3,12 @@ module github.com/notedit/rtc-rtmp
 go 1.13
 
 require (
-	github.com/3d0c/gmf v0.0.0-20190724130615-f4b5acb7db5c
 	github.com/gin-contrib/cors v1.3.0
 	github.com/gin-gonic/gin v1.5.0
-	github.com/google/uuid v1.1.1 // indirect
-	github.com/joho/godotenv v1.3.0 // indirect
-	github.com/notedit/gst v0.0.3
-	github.com/notedit/rtmp-lib v0.0.3-0.20200309062900-a914a734466a
+	github.com/notedit/rtmp-lib v0.0.4
 	github.com/pion/webrtc/v2 v2.1.18
 	github.com/satori/go.uuid v1.2.0
-	github.com/sevlyar/go-daemon v0.1.5 // indirect
-	github.com/winlinvip/go-fdkaac v0.0.0-20180716140705-2654f5a0cc2e // indirect
-	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
+	layeh.com/gopus v0.0.0-20161224163843-0ebf989153aa
 )
+
+//replace github.com/notedit/rtmp-lib v0.0.5 => ../rtmp-lib

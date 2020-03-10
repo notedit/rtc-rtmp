@@ -1,6 +1,7 @@
 package transformer
 
 import (
+	"fmt"
 	"github.com/notedit/rtmp-lib/audio"
 	"github.com/notedit/rtmp-lib/av"
 	"time"
@@ -38,6 +39,7 @@ func (t *Transformer) Setup() error {
 	enc.SetSampleRate(t.outSampleRate)
 	enc.SetSampleFormat(t.outSampleFormat)
 	enc.SetChannelLayout(t.outChannelLayout)
+	enc.SetBitrate(64000)
 	err = enc.Setup()
 	if err != nil {
 		return err
@@ -86,6 +88,7 @@ func (t *Transformer) Do(pkt av.Packet) (out []av.Packet, err error) {
 		return
 	}
 
+
 	if !ok {
 		return
 	}
@@ -105,6 +108,7 @@ func (t *Transformer) Do(pkt av.Packet) (out []av.Packet, err error) {
 		if dur, err = t.enc.PacketDuration(_outpkt); err != nil {
 			return
 		}
+		fmt.Println("opus dur", dur)
 		outpkt := av.Packet{Idx: pkt.Idx, Data: _outpkt}
 		outpkt.Time = t.timeline.Pop(dur)
 		out = append(out, outpkt)

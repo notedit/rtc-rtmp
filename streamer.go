@@ -82,7 +82,6 @@ func NewRtmpRtcStreamer(streamURL string) (*RtmpRtcStreamer, error) {
 
 	rtmp2rtc := &RtmpRtcStreamer{}
 	rtmp2rtc.pc = peerConnection
-	rtmp2rtc.adtsheader = make([]byte, 7)
 	rtmp2rtc.audioTrack = audioTrack
 	rtmp2rtc.videoTrack = videoTrack
 	rtmp2rtc.streamURL = streamURL
@@ -140,7 +139,6 @@ func (r *RtmpRtcStreamer) Close() {
 
 	r.pc.Close()
 	r.conn.Close()
-	r.transform.Close()
 }
 
 func (r *RtmpRtcStreamer) PullStream() {
@@ -164,14 +162,14 @@ func (r *RtmpRtcStreamer) PullStream() {
 			r.videoCodec = stream.(h264.CodecData)
 		}
 		if stream.Type() == av.AAC {
-			r.audioCodec = stream.(aac.CodecData)
-			r.transform.SetInSampleRate(r.audioCodec.SampleRate())
-			r.transform.SetInChannelLayout(r.audioCodec.ChannelLayout())
-			r.transform.SetInSampleFormat(r.audioCodec.SampleFormat())
-			r.transform.SetOutChannelLayout(av.CH_STEREO)
-			r.transform.SetOutSampleRate(48000)
-			r.transform.SetOutSampleFormat(av.S16)
-			r.transform.Setup()
+			//r.audioCodec = stream.(aac.CodecData)
+			//r.transform.SetInSampleRate(r.audioCodec.SampleRate())
+			//r.transform.SetInChannelLayout(r.audioCodec.ChannelLayout())
+			//r.transform.SetInSampleFormat(r.audioCodec.SampleFormat())
+			//r.transform.SetOutChannelLayout(av.CH_STEREO)
+			//r.transform.SetOutSampleRate(48000)
+			//r.transform.SetOutSampleFormat(av.S16)
+			go r.transform.Setup()
 		}
 	}
 
@@ -229,8 +227,9 @@ func (r *RtmpRtcStreamer) PullStream() {
 				} else {
 					samples = uint32(uint64((pkt.Time-r.lastAudioTime)*48000) / 1000000000)
 				}
+				fmt.Println("samples", samples, "in time",packet.Time, "out time",pkt.Time)
 				r.lastAudioTime = pkt.Time
-				r.audioTrack.WriteSample(media.Sample{Data: pkt.Data, Samples: samples})
+				r.audioTrack.WriteSample(media.Sample{Data: pkt.Data, Samples: 960})
 			}
 		}
 	}
