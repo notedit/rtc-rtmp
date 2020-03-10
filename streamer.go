@@ -162,14 +162,14 @@ func (r *RtmpRtcStreamer) PullStream() {
 			r.videoCodec = stream.(h264.CodecData)
 		}
 		if stream.Type() == av.AAC {
-			//r.audioCodec = stream.(aac.CodecData)
-			//r.transform.SetInSampleRate(r.audioCodec.SampleRate())
-			//r.transform.SetInChannelLayout(r.audioCodec.ChannelLayout())
-			//r.transform.SetInSampleFormat(r.audioCodec.SampleFormat())
-			//r.transform.SetOutChannelLayout(av.CH_STEREO)
-			//r.transform.SetOutSampleRate(48000)
-			//r.transform.SetOutSampleFormat(av.S16)
-			go r.transform.Setup()
+			r.audioCodec = stream.(aac.CodecData)
+			r.transform.SetInSampleRate(r.audioCodec.SampleRate())
+			r.transform.SetInChannelLayout(r.audioCodec.ChannelLayout())
+			r.transform.SetInSampleFormat(r.audioCodec.SampleFormat())
+			r.transform.SetOutChannelLayout(av.CH_STEREO)
+			r.transform.SetOutSampleRate(48000)
+			r.transform.SetOutSampleFormat(av.S16)
+			r.transform.Setup()
 		}
 	}
 
