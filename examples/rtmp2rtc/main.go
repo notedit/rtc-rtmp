@@ -123,7 +123,9 @@ func pullstream(c *gin.Context) {
 	}
 
 	streamer, err := rtcrtmp.NewRtmpRtcStreamer("rtmp://localhost/live/live")
+
 	if err != nil {
+		fmt.Println("error", err)
 		c.JSON(200, gin.H{
 			"s": 10001,
 			"e": err,
@@ -135,6 +137,7 @@ func pullstream(c *gin.Context) {
 	sdp, err := streamer.GetLocalSDP(webrtc.SDPTypeAnswer)
 
 	if err != nil {
+		fmt.Println("error", err)
 		c.JSON(200, gin.H{
 			"s": 10001,
 			"e": err,

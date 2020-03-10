@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	//"github.com/notedit/gst"
+	"github.com/notedit/rtc-rtmp/transformer"
 	"github.com/notedit/rtmp-lib"
 	"github.com/notedit/rtmp-lib/aac"
 	"github.com/notedit/rtmp-lib/av"
@@ -19,14 +19,13 @@ import (
 var naluHeader = []byte{0, 0, 0, 1}
 
 type RtmpRtcStreamer struct {
-	streams        []av.CodecData
-	videoCodecData h264.CodecData
-	audioCodecData aac.CodecData
-	//pipeline       *gst.Pipeline
-	//audiosrc       *gst.Element
-	//audiosink      *gst.Element
-	adtsheader     []byte
-	spspps         bool
+	streams    []av.CodecData
+	videoCodec h264.CodecData
+	audioCodec aac.CodecData
+	adtsheader []byte
+	spspps     bool
+
+	transform *transformer.Transformer
 
 	audioTrack *webrtc.Track
 	videoTrack *webrtc.Track
@@ -44,15 +43,6 @@ type RtmpRtcStreamer struct {
 }
 
 func NewRtmpRtcStreamer(streamURL string) (*RtmpRtcStreamer, error) {
-
-	//pipeline, err := gst.ParseLaunch(aac2opus_pipeline)
-	//
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	//audiosrc := pipeline.GetByName("appsrc")
-	//pipeline.SetState(gst.StatePlaying)
 
 	config := webrtc.Configuration{
 		ICEServers:   []webrtc.ICEServer{},
@@ -88,13 +78,15 @@ func NewRtmpRtcStreamer(streamURL string) (*RtmpRtcStreamer, error) {
 	peerConnection.AddTransceiverFromTrack(audioTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 	peerConnection.AddTransceiverFromTrack(videoTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 
+	transform := &transformer.Transformer{}
+
 	rtmp2rtc := &RtmpRtcStreamer{}
-	//rtmp2rtc.audiosrc = audiosrc
 	rtmp2rtc.pc = peerConnection
 	rtmp2rtc.adtsheader = make([]byte, 7)
 	rtmp2rtc.audioTrack = audioTrack
 	rtmp2rtc.videoTrack = videoTrack
 	rtmp2rtc.streamURL = streamURL
+	rtmp2rtc.transform = transform
 
 	peerConnection.OnConnectionStateChange(rtmp2rtc.onConnectionState)
 
@@ -132,7 +124,7 @@ func (r *RtmpRtcStreamer) SetRemoteSDP(sdpStr string, sdpType webrtc.SDPType) er
 func (r *RtmpRtcStreamer) onConnectionState(state webrtc.PeerConnectionState) {
 
 	if state == webrtc.PeerConnectionStateConnected {
-		go r.startpull()
+		go r.PullStream()
 	}
 
 	// todo, handle other state
@@ -148,10 +140,10 @@ func (r *RtmpRtcStreamer) Close() {
 
 	r.pc.Close()
 	r.conn.Close()
-	//r.pipeline.SetState(gst.StateNull)
+	r.transform.Close()
 }
 
-func (r *RtmpRtcStreamer) startpull() {
+func (r *RtmpRtcStreamer) PullStream() {
 
 	conn, err := rtmp.Dial(r.streamURL)
 
@@ -169,10 +161,17 @@ func (r *RtmpRtcStreamer) startpull() {
 
 	for _, stream := range r.streams {
 		if stream.Type() == av.H264 {
-			r.videoCodecData = stream.(h264.CodecData)
+			r.videoCodec = stream.(h264.CodecData)
 		}
 		if stream.Type() == av.AAC {
-			r.audioCodecData = stream.(aac.CodecData)
+			r.audioCodec = stream.(aac.CodecData)
+			r.transform.SetInSampleRate(r.audioCodec.SampleRate())
+			r.transform.SetInChannelLayout(r.audioCodec.ChannelLayout())
+			r.transform.SetInSampleFormat(r.audioCodec.SampleFormat())
+			r.transform.SetOutChannelLayout(av.CH_STEREO)
+			r.transform.SetOutSampleRate(48000)
+			r.transform.SetOutSampleFormat(av.S16)
+			r.transform.Setup()
 		}
 	}
 
@@ -184,7 +183,7 @@ func (r *RtmpRtcStreamer) startpull() {
 
 		stream := r.streams[packet.Idx]
 
-		if stream.Type() == av.H264 {
+		if stream.Type().IsVideo() {
 			var samples uint32
 			if r.lastVideoTime == 0 {
 				samples = 0
@@ -193,11 +192,12 @@ func (r *RtmpRtcStreamer) startpull() {
 			}
 
 			var b bytes.Buffer
+			// todo  may check the sps and ppt packet
 			if packet.IsKeyFrame {
 				b.Write(naluHeader)
-				b.Write(r.videoCodecData.SPS())
+				b.Write(r.videoCodec.SPS())
 				b.Write(naluHeader)
-				b.Write(r.videoCodecData.PPS())
+				b.Write(r.videoCodec.PPS())
 			}
 
 			if packet.Data[0] == 0x00 && packet.Data[1] == 0x00 && packet.Data[2] == 0x00 && packet.Data[3] == 0x01 {
@@ -216,20 +216,23 @@ func (r *RtmpRtcStreamer) startpull() {
 
 		} else if stream.Type() == av.AAC {
 
-			// var samples uint32
-			// if r.lastAudioTime == 0 {
-			// 	samples = 0
-			// } else {
-			// 	samples = uint32(uint64(packet.Time-r.lastAudioTime) * 48000 / 1000000000)
-			// }
+			pkts,err := r.transform.Do(packet)
+			if err != nil {
+				fmt.Println("transform error",err)
+				continue
+			}
 
-			adtsbuffer := []byte{}
-			aac.FillADTSHeader(r.adtsheader, r.audioCodecData.Config, 1024, len(packet.Data))
-			adtsbuffer = append(adtsbuffer, r.adtsheader...)
-			adtsbuffer = append(adtsbuffer, packet.Data...)
-			//r.audiosrc.PushBuffer(adtsbuffer)
-			//fmt.Println("audio ====", samples)
-			r.lastAudioTime = packet.Time
+			var samples uint32
+			for _,pkt := range pkts {
+				if r.lastAudioTime == 0 {
+					samples = 0
+				} else {
+					samples = uint32(uint64((pkt.Time-r.lastAudioTime)*48000) / 1000000000)
+				}
+				r.lastAudioTime = pkt.Time
+				r.audioTrack.WriteSample(media.Sample{Data: pkt.Data, Samples: samples})
+			}
 		}
 	}
 }
+

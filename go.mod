@@ -9,9 +9,10 @@ require (
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/joho/godotenv v1.3.0 // indirect
 	github.com/notedit/gst v0.0.3
-	github.com/notedit/rtmp-lib v0.0.2
+	github.com/notedit/rtmp-lib v0.0.3-0.20200309062900-a914a734466a
 	github.com/pion/webrtc/v2 v2.1.18
 	github.com/satori/go.uuid v1.2.0
 	github.com/sevlyar/go-daemon v0.1.5 // indirect
+	github.com/winlinvip/go-fdkaac v0.0.0-20180716140705-2654f5a0cc2e // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 )
