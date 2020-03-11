@@ -136,9 +136,10 @@ func (r *RtmpRtcStreamer) Close() {
 	}
 
 	r.closed = true
-
+	
 	r.pc.Close()
 	r.conn.Close()
+	r.transform.Close()
 }
 
 func (r *RtmpRtcStreamer) PullStream() {

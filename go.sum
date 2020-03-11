@@ -53,6 +53,8 @@ github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 h1:Esafd1046DLD
 github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/modern-go/reflect2 v1.0.1 h1:9f412s+6RmYXLWZSEzVVgPGK7C2PphHj5RJrvfx9AWI=
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
+github.com/notedit/go-fdkaac v0.0.0-20200307100649-833bc3aabc30 h1:mqKnShQCqIiX146Fsu6kloOBRIBdWamSe+9F1saEGnU=
+github.com/notedit/go-fdkaac v0.0.0-20200307100649-833bc3aabc30/go.mod h1:79qgEjEMiY6Va1YR0Dhjj8bD99LFCzzaR14izEg8k6M=
 github.com/notedit/gst v0.0.3 h1:i+Wc/YB7xx8PfehIE5RRCTLJqEK4Qx1rQg/9GCZl1Mw=
 github.com/notedit/gst v0.0.3/go.mod h1:99yZ0oIrCg0xd2a1rn/1cjcUAHLAGTDxXLD1FQ5NpoM=
 github.com/notedit/rtmp-lib v0.0.3-0.20200309062900-a914a734466a h1:4fYZNwwA19cZf7F17dxS2+YQXbLnNSHWBIRnLr3ieWs=
