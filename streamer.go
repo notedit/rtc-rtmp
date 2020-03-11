@@ -12,7 +12,6 @@ import (
 	"github.com/notedit/rtmp-lib/av"
 	"github.com/notedit/rtmp-lib/h264"
 	"github.com/pion/webrtc/v2"
-	"github.com/pion/webrtc/v2/pkg/media"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -136,7 +135,7 @@ func (r *RtmpRtcStreamer) Close() {
 	}
 
 	r.closed = true
-	
+
 	r.pc.Close()
 	r.conn.Close()
 	r.transform.Close()
@@ -210,7 +209,14 @@ func (r *RtmpRtcStreamer) PullStream() {
 				}
 			}
 
-			r.videoTrack.WriteSample(media.Sample{Data: b.Bytes(), Samples: samples})
+			packets := r.videoTrack.Packetizer().Packetize(b.Bytes(), samples)
+			for _, p := range packets {
+				err := r.videoTrack.WriteRTP(p)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+			}
 			r.lastVideoTime = packet.Time
 
 		} else if stream.Type() == av.AAC {
@@ -221,16 +227,25 @@ func (r *RtmpRtcStreamer) PullStream() {
 				continue
 			}
 
-			var samples uint32
+			//var samples uint32
 			for _,pkt := range pkts {
-				if r.lastAudioTime == 0 {
-					samples = 0
-				} else {
-					samples = uint32(uint64((pkt.Time-r.lastAudioTime)*48000) / 1000000000)
+				//if r.lastAudioTime == 0 {
+				//	samples = 0
+				//} else {
+				//	samples = uint32(uint64((pkt.Time-r.lastAudioTime)*48000) / 1000000000)
+				//}
+
+				packets := r.audioTrack.Packetizer().Packetize(pkt.Data, 960)
+				for _, p := range packets {
+					err := r.audioTrack.WriteRTP(p)
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
 				}
-				fmt.Println("samples", samples, "in time",packet.Time, "out time",pkt.Time)
+
 				r.lastAudioTime = pkt.Time
-				r.audioTrack.WriteSample(media.Sample{Data: pkt.Data, Samples: 960})
+				//r.audioTrack.WriteSample(media.Sample{Data: pkt.Data, Samples: 960})
 			}
 		}
 	}
