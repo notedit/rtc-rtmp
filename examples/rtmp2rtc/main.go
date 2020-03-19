@@ -24,6 +24,7 @@ func startRtmp() {
 	l := &sync.RWMutex{}
 
 	server := rtmp.NewServer(1024)
+	server.Addr = ":2935"
 
 	server.HandlePublish = func(conn *rtmp.Conn) {
 
@@ -98,7 +99,10 @@ func startRtmp() {
 		}
 	}
 
-	server.ListenAndServe()
+	err := server.ListenAndServe()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func index(c *gin.Context) {
@@ -122,7 +126,7 @@ func pullstream(c *gin.Context) {
 		return
 	}
 
-	streamer, err := rtcrtmp.NewRtmpRtcStreamer("rtmp://localhost/live/live")
+	streamer, err := rtcrtmp.NewRtmpRtcStreamer("rtmp://localhost:2935/live/live")
 
 	if err != nil {
 		fmt.Println("error", err)

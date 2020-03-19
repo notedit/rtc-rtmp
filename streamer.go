@@ -17,6 +17,7 @@ import (
 
 var naluHeader = []byte{0, 0, 0, 1}
 
+
 type RtmpRtcStreamer struct {
 	streams    []av.CodecData
 	videoCodec h264.CodecData
@@ -118,6 +119,7 @@ func (r *RtmpRtcStreamer) SetRemoteSDP(sdpStr string, sdpType webrtc.SDPType) er
 
 	return err
 }
+
 
 func (r *RtmpRtcStreamer) onConnectionState(state webrtc.PeerConnectionState) {
 
@@ -227,14 +229,7 @@ func (r *RtmpRtcStreamer) PullStream() {
 				continue
 			}
 
-			//var samples uint32
 			for _,pkt := range pkts {
-				//if r.lastAudioTime == 0 {
-				//	samples = 0
-				//} else {
-				//	samples = uint32(uint64((pkt.Time-r.lastAudioTime)*48000) / 1000000000)
-				//}
-
 				packets := r.audioTrack.Packetizer().Packetize(pkt.Data, 960)
 				for _, p := range packets {
 					err := r.audioTrack.WriteRTP(p)
