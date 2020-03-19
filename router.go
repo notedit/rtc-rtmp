@@ -10,6 +10,7 @@ import (
 	"github.com/notedit/rtmp-lib/h264"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
+	uuid "github.com/satori/go.uuid"
 	"math/rand"
 	"net/url"
 	"strings"
@@ -70,7 +71,7 @@ func NewRTCRouter(streamURL string) (router *RTCRouter,err error) {
 		videoCodec.Payloader,
 		rtp.NewRandomSequencer(),
 		videoCodec.ClockRate,
-	)
+		)
 
 	audioPacketizer := rtp.NewPacketizer(
 		1200,
@@ -91,14 +92,29 @@ func NewRTCRouter(streamURL string) (router *RTCRouter,err error) {
 	return
 }
 
-func (self *RTCRouter) CreateSubscriber() *RTCTransport {
+func (self *RTCRouter) CreateSubscriber() (*RTCTransport,error) {
 
-	return nil
+	id := uuid.NewV4().String()
+	transport,err := NewRTCTransport(id)
+
+	if err != nil {
+		return nil,err
+	}
+
+	self.Lock()
+	self.outTransports[id] = transport
+	self.Unlock()
+
+	return transport,nil
 }
 
-func (self *RTCRouter) StopSubscriber() {
-	
+func (self *RTCRouter) StopSubscriber(transport *RTCTransport) {
+
+	self.Lock()
+	delete(self.outTransports,transport.ID())
+	self.Unlock()
 }
+
 
 func (self *RTCRouter) readPacket() {
 
@@ -144,9 +160,9 @@ func (self *RTCRouter) readPacket() {
 			var b bytes.Buffer
 			// TODO  may check the sps and ppt packet
 			if packet.IsKeyFrame {
-				b.Write(naluHeader)
+				b.Write(NALUHeader)
 				b.Write(self.videoCodec.SPS())
-				b.Write(naluHeader)
+				b.Write(NALUHeader)
 				b.Write(self.videoCodec.PPS())
 			}
 
@@ -161,14 +177,7 @@ func (self *RTCRouter) readPacket() {
 			}
 
 			packets := self.videoPacketizer.Packetize(b.Bytes(), samples)
-			for _, p := range packets {
-				//err := r.videoTrack.WriteRTP(p)
-				fmt.Println("video",p.SequenceNumber)
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
-			}
+			self.writePackets(packets)
 			self.lastVideoTime = packet.Time
 
 		} else if stream.Type() == av.AAC {
@@ -181,21 +190,23 @@ func (self *RTCRouter) readPacket() {
 
 			for _,pkt := range pkts {
 				packets := self.audioPacketizer.Packetize(pkt.Data, 960)
-				for _, p := range packets {
-					fmt.Println("audio",p.SequenceNumber)
-					if err != nil {
-						fmt.Println(err)
-						continue
-					}
-				}
+				self.writePackets(packets)
 				self.lastAudioTime = pkt.Time
 			}
 		}
 	}
 }
 
+func (self *RTCRouter) writePackets(pkts []*rtp.Packet)  {
+	self.RLock()
+	defer self.RUnlock()
 
-
+	for _,pkt := range pkts {
+		for _,transport := range self.outTransports {
+			transport.WriteRTP(pkt)
+		}
+	}
+}
 
 func (self *RTCRouter) Stop() error {
 	return nil
