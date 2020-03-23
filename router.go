@@ -11,11 +11,16 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 	uuid "github.com/satori/go.uuid"
-	"math/rand"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+)
+
+
+const (
+	DefaultOpusSSRC = 111111111
+	DefaultH264SSRC = 333333333
 )
 
 var NALUHeader = []byte{0, 0, 0, 1}
@@ -26,7 +31,6 @@ type RTCRouter struct {
 	streams    []av.CodecData
 	videoCodec h264.CodecData
 	audioCodec aac.CodecData
-
 	conn      *rtmp.Conn
 
 	transform *transformer.Transformer
@@ -37,6 +41,8 @@ type RTCRouter struct {
 	audioPacketizer rtp.Packetizer
 
 	outTransports map[string]*RTCTransport
+
+	stop  bool
 	sync.RWMutex
 }
 
@@ -61,13 +67,14 @@ func NewRTCRouter(streamURL string) (router *RTCRouter,err error) {
 		return
 	}
 
+
 	videoCodec := webrtc.NewRTPH264Codec(webrtc.DefaultPayloadTypeH264, 90000)
 	audioCodec := webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000)
 
 	videoPacketizer := rtp.NewPacketizer(
 		1200,
 		videoCodec.PayloadType,
-		rand.Uint32(),
+		DefaultH264SSRC,
 		videoCodec.Payloader,
 		rtp.NewRandomSequencer(),
 		videoCodec.ClockRate,
@@ -76,11 +83,13 @@ func NewRTCRouter(streamURL string) (router *RTCRouter,err error) {
 	audioPacketizer := rtp.NewPacketizer(
 		1200,
 		audioCodec.PayloadType,
-		rand.Uint32(),
+		DefaultOpusSSRC,
 		audioCodec.Payloader,
 		rtp.NewRandomSequencer(),
 		audioCodec.ClockRate,
 		)
+
+	transform := &transformer.Transformer{}
 
 	router = &RTCRouter{}
 	router.streamURL = streamURL
@@ -88,6 +97,11 @@ func NewRTCRouter(streamURL string) (router *RTCRouter,err error) {
 	router.conn = conn
 	router.videoPacketizer = videoPacketizer
 	router.audioPacketizer = audioPacketizer
+	router.outTransports = make(map[string]*RTCTransport,0)
+	router.transform = transform
+
+
+	go router.readPacket()
 
 	return
 }
@@ -144,6 +158,7 @@ func (self *RTCRouter) readPacket() {
 	for {
 		packet, err := self.conn.ReadPacket()
 		if err != nil {
+			fmt.Println("read packet error", err)
 			break
 		}
 
@@ -200,6 +215,8 @@ func (self *RTCRouter) readPacket() {
 func (self *RTCRouter) writePackets(pkts []*rtp.Packet)  {
 	self.RLock()
 	defer self.RUnlock()
+
+	fmt.Println(self.outTransports, len(pkts))
 
 	for _,pkt := range pkts {
 		for _,transport := range self.outTransports {

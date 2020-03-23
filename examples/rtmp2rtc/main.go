@@ -154,7 +154,9 @@ func pullstream(c *gin.Context) {
 		"d": map[string]string{
 			"sdp": sdp,
 		},
+		"sdp": sdp,  // for testing
 	})
+	
 }
 
 func main() {

@@ -19,6 +19,9 @@ type Channel struct {
 
 var channels = map[string]*Channel{}
 
+var routers = map[string]*rtcrtmp.RTCRouter{}
+
+
 func startRtmp() {
 
 	l := &sync.RWMutex{}
@@ -125,6 +128,7 @@ func pullstream(c *gin.Context) {
 		})
 		return
 	}
+
 
 	router,err := rtcrtmp.NewRTCRouter("rtmp://localhost:2935/live/live")
 

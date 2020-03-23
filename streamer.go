@@ -3,7 +3,6 @@ package rtcrtmp
 import (
 	"bytes"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/notedit/rtc-rtmp/transformer"
@@ -63,13 +62,13 @@ func NewRtmpRtcStreamer(streamURL string) (*RtmpRtcStreamer, error) {
 	}
 
 	streamID := uuid.NewV4().String()
-	audioTrack, err := peerConnection.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), uuid.NewV4().String(), streamID)
+	audioTrack, err := peerConnection.NewTrack(webrtc.DefaultPayloadTypeOpus, 333, uuid.NewV4().String(), streamID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	videoTrack, err := peerConnection.NewTrack(webrtc.DefaultPayloadTypeH264, rand.Uint32(), uuid.NewV4().String(), streamID)
+	videoTrack, err := peerConnection.NewTrack(webrtc.DefaultPayloadTypeH264, 666, uuid.NewV4().String(), streamID)
 
 	if err != nil {
 		return nil, err

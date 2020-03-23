@@ -7,7 +7,6 @@ import (
 	"github.com/pion/webrtc/v2"
 	uuid "github.com/satori/go.uuid"
 	"io"
-	"math/rand"
 	"sync"
 	"time"
 )
@@ -22,6 +21,8 @@ type RTCTransport struct {
 
 	videoBuffer *RTPBuffer
 	audioBuffer *RTPBuffer
+
+	connected  bool
 
 	localSDP  string
 	remoteSDP string
@@ -45,14 +46,14 @@ func NewRTCTransport(id string) (*RTCTransport, error) {
 
 	s := webrtc.SettingEngine{}
 	s.SetConnectionTimeout(10*time.Second, 2*time.Second)
-	s.SetLite(true)
-	s.SetTrickle(false)
 	m := webrtc.MediaEngine{}
 	m.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
 	m.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb))
 	api := webrtc.NewAPI(webrtc.WithSettingEngine(s), webrtc.WithMediaEngine(m))
 
 	config := webrtc.Configuration{
+		ICEServers:   []webrtc.ICEServer{},
+		BundlePolicy: webrtc.BundlePolicyMaxBundle,
 		SDPSemantics: webrtc.SDPSemanticsUnifiedPlan,
 	}
 
@@ -66,17 +67,21 @@ func NewRTCTransport(id string) (*RTCTransport, error) {
 	}
 
 	streamID := uuid.NewV4().String()
-	audioTrack, err := pc.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), uuid.NewV4().String(), streamID)
+	audioTrack, err := pc.NewTrack(webrtc.DefaultPayloadTypeOpus, DefaultOpusSSRC, uuid.NewV4().String(), streamID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	videoTrack, err := pc.NewTrack(webrtc.DefaultPayloadTypeH264, rand.Uint32(), uuid.NewV4().String(), streamID)
+	videoTrack, err := pc.NewTrack(webrtc.DefaultPayloadTypeH264, DefaultH264SSRC, uuid.NewV4().String(), streamID)
 
 	if err != nil {
 		return nil, err
 	}
+
+
+	pc.OnConnectionStateChange(transport.onConnectionState)
+
 
 	pc.AddTransceiverFromTrack(audioTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 	pc.AddTransceiverFromTrack(videoTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
@@ -129,10 +134,16 @@ func (self *RTCTransport) SetRemoteSDP(sdpStr string, sdpType webrtc.SDPType) er
 }
 
 func (self *RTCTransport) WriteRTP(packet *rtp.Packet) (err error) {
-	if packet.SSRC == webrtc.DefaultPayloadTypeOpus {
+
+	if !self.connected {
+		fmt.Println("transport does not connected ========")
+		return
+	}
+
+	if packet.SSRC == DefaultOpusSSRC {
 		self.audioBuffer.Add(packet)
 		err = self.audioTrack.WriteRTP(packet)
-	} else if packet.SSRC == webrtc.DefaultPayloadTypeH264 {
+	} else if packet.SSRC == DefaultH264SSRC {
 		self.videoBuffer.Add(packet)
 		err = self.videoTrack.WriteRTP(packet)
 	} else {
@@ -177,4 +188,14 @@ func (self *RTCTransport) handleOutgoingRTCP() {
 			}
 		}
 	}()
+}
+
+
+func (self *RTCTransport) onConnectionState(state webrtc.PeerConnectionState) {
+
+
+	if state == webrtc.PeerConnectionStateConnected {
+		self.connected = true
+		fmt.Println("PeerConnectionStateConnected ==========")
+	}
 }
