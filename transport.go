@@ -48,7 +48,7 @@ func NewRTCTransport(id string) (*RTCTransport, error) {
 	s.SetConnectionTimeout(10*time.Second, 2*time.Second)
 	s.SetLite(true)
 	s.SetTrickle(false)
-	ips := []string{"172.20.10.3"}
+	ips := []string{"127.0.0.1"}
 	s.SetNAT1To1IPs(ips, webrtc.ICECandidateTypeHost)
 
 	m := webrtc.MediaEngine{}
