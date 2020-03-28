@@ -139,6 +139,8 @@ func (self *RTCRouter) readPacket() {
 		return
 	}
 
+	defer self.conn.Close()
+
 	for _, stream := range self.streams {
 		if stream.Type() == av.H264 {
 			self.videoCodec = stream.(h264.CodecData)
@@ -162,6 +164,10 @@ func (self *RTCRouter) readPacket() {
 			break
 		}
 
+		if self.stop {
+			break
+		}
+
 		stream := self.streams[packet.Idx]
 
 		if stream.Type().IsVideo() {
@@ -173,7 +179,6 @@ func (self *RTCRouter) readPacket() {
 			}
 
 			var b bytes.Buffer
-			// TODO  may check the sps and ppt packet
 			if packet.IsKeyFrame {
 				b.Write(NALUHeader)
 				b.Write(self.videoCodec.SPS())
@@ -216,8 +221,6 @@ func (self *RTCRouter) writePackets(pkts []*rtp.Packet)  {
 	self.RLock()
 	defer self.RUnlock()
 
-	fmt.Println(self.outTransports, len(pkts))
-
 	for _,pkt := range pkts {
 		for _,transport := range self.outTransports {
 			transport.WriteRTP(pkt)
@@ -225,8 +228,21 @@ func (self *RTCRouter) writePackets(pkts []*rtp.Packet)  {
 	}
 }
 
-func (self *RTCRouter) Stop() error {
-	return nil
+func (self *RTCRouter) Stop() (err error) {
+
+	if self.stop {
+		return
+	}
+	self.stop = true
+
+	self.Lock()
+	defer self.Unlock()
+
+	for _,transport := range self.outTransports {
+		transport.Stop()
+	}
+	self.outTransports = nil
+	return
 }
 
 

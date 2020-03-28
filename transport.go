@@ -193,7 +193,6 @@ func (self *RTCTransport) handleOutgoingRTCP() {
 
 func (self *RTCTransport) onConnectionState(state webrtc.PeerConnectionState) {
 
-
 	if state == webrtc.PeerConnectionStateConnected {
 		self.connected = true
 		fmt.Println("PeerConnectionStateConnected ==========")

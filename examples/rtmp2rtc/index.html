@@ -48,7 +48,7 @@
             sdp: offer.sdp
         }
 
-        let res = await fetch('http://127.0.0.1:8000/api/pullstream', {
+        let res = await fetch('http://127.0.0.1:8000/rtc/v1/play', {
             method: 'post',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)

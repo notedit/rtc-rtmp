@@ -17,7 +17,7 @@ import (
 var naluHeader = []byte{0, 0, 0, 1}
 
 
-type RtmpRtcStreamer struct {
+type RtmpStreamer struct {
 	streams    []av.CodecData
 	videoCodec h264.CodecData
 	audioCodec aac.CodecData
@@ -41,7 +41,7 @@ type RtmpRtcStreamer struct {
 	closed    bool
 }
 
-func NewRtmpRtcStreamer(streamURL string) (*RtmpRtcStreamer, error) {
+func NewRtmpRtcStreamer(streamURL string) (*RtmpStreamer, error) {
 
 	config := webrtc.Configuration{
 		ICEServers:   []webrtc.ICEServer{},
@@ -79,19 +79,19 @@ func NewRtmpRtcStreamer(streamURL string) (*RtmpRtcStreamer, error) {
 
 	transform := &transformer.Transformer{}
 
-	rtmp2rtc := &RtmpRtcStreamer{}
-	rtmp2rtc.pc = peerConnection
-	rtmp2rtc.audioTrack = audioTrack
-	rtmp2rtc.videoTrack = videoTrack
-	rtmp2rtc.streamURL = streamURL
-	rtmp2rtc.transform = transform
+	streamer := &RtmpStreamer{}
+	streamer.pc = peerConnection
+	streamer.audioTrack = audioTrack
+	streamer.videoTrack = videoTrack
+	streamer.streamURL = streamURL
+	streamer.transform = transform
 
-	peerConnection.OnConnectionStateChange(rtmp2rtc.onConnectionState)
+	peerConnection.OnConnectionStateChange(streamer.onConnectionState)
 
-	return rtmp2rtc, nil
+	return streamer, nil
 }
 
-func (r *RtmpRtcStreamer) GetLocalSDP(sdpType webrtc.SDPType) (string, error) {
+func (r *RtmpStreamer) GetLocalSDP(sdpType webrtc.SDPType) (string, error) {
 
 	var sdp webrtc.SessionDescription
 	var err error
@@ -110,7 +110,7 @@ func (r *RtmpRtcStreamer) GetLocalSDP(sdpType webrtc.SDPType) (string, error) {
 	return r.localSDP, err
 }
 
-func (r *RtmpRtcStreamer) SetRemoteSDP(sdpStr string, sdpType webrtc.SDPType) error {
+func (r *RtmpStreamer) SetRemoteSDP(sdpStr string, sdpType webrtc.SDPType) error {
 
 	r.remoteSDP = sdpStr
 	sdp := webrtc.SessionDescription{SDP: sdpStr, Type: sdpType}
@@ -120,7 +120,7 @@ func (r *RtmpRtcStreamer) SetRemoteSDP(sdpStr string, sdpType webrtc.SDPType) er
 }
 
 
-func (r *RtmpRtcStreamer) onConnectionState(state webrtc.PeerConnectionState) {
+func (r *RtmpStreamer) onConnectionState(state webrtc.PeerConnectionState) {
 
 	if state == webrtc.PeerConnectionStateConnected {
 		go r.PullStream()
@@ -129,7 +129,7 @@ func (r *RtmpRtcStreamer) onConnectionState(state webrtc.PeerConnectionState) {
 	// todo, handle other state
 }
 
-func (r *RtmpRtcStreamer) Close() {
+func (r *RtmpStreamer) Close() {
 
 	if r.closed {
 		return
@@ -142,7 +142,7 @@ func (r *RtmpRtcStreamer) Close() {
 	r.transform.Close()
 }
 
-func (r *RtmpRtcStreamer) PullStream() {
+func (r *RtmpStreamer) PullStream() {
 
 	conn, err := rtmp.Dial(r.streamURL)
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"sync"
 
 	"github.com/gin-contrib/cors"
@@ -21,13 +22,12 @@ var channels = map[string]*Channel{}
 
 var routers = map[string]*rtcrtmp.RTCRouter{}
 
-
 func startRtmp() {
 
 	l := &sync.RWMutex{}
 
 	server := rtmp.NewServer(1024)
-	server.Addr = ":2935"
+	server.Addr = ":1935"
 
 	server.HandlePublish = func(conn *rtmp.Conn) {
 
@@ -67,6 +67,14 @@ func startRtmp() {
 
 		l.Lock()
 		delete(channels, conn.URL.Path)
+		l.Unlock()
+
+		l.Lock()
+		router := routers[conn.URL.Path]
+		if router != nil {
+			router.Stop()
+		}
+		delete(routers, conn.URL.Path)
 		l.Unlock()
 
 		ch.que.Close()
@@ -117,7 +125,8 @@ func index(c *gin.Context) {
 func pullstream(c *gin.Context) {
 
 	var data struct {
-		SDP string `json:"sdp"`
+		SDP       string `json:"sdp"`
+		StreamURL string `json:"streamurl"`
 	}
 
 	if err := c.ShouldBind(&data); err != nil {
@@ -129,8 +138,7 @@ func pullstream(c *gin.Context) {
 		return
 	}
 
-
-	router,err := rtcrtmp.NewRTCRouter("rtmp://localhost:2935/live/live")
+	u, err := url.Parse(data.StreamURL)
 
 	if err != nil {
 		fmt.Println("error", err)
@@ -141,7 +149,22 @@ func pullstream(c *gin.Context) {
 		return
 	}
 
-	transport,err := router.CreateSubscriber()
+	pullURL := "rtmp://localhost/" + u.Path
+
+	fmt.Println("pullURL ===", pullURL)
+
+	router, err := rtcrtmp.NewRTCRouter(pullURL)
+
+	if err != nil {
+		fmt.Println("error", err)
+		c.JSON(200, gin.H{
+			"s": 10001,
+			"e": err,
+		})
+		return
+	}
+
+	transport, err := router.CreateSubscriber()
 
 	if err != nil {
 		fmt.Println("error", err)
@@ -185,7 +208,7 @@ func main() {
 
 	router.LoadHTMLFiles("./index.html")
 	router.GET("/", index)
-	router.POST("/api/pullstream", pullstream)
+	router.POST("/rtc/v1/play", pullstream)
 
 	router.Run(":8000")
 

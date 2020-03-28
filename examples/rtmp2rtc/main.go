@@ -24,7 +24,7 @@ func startRtmp() {
 	l := &sync.RWMutex{}
 
 	server := rtmp.NewServer(1024)
-	server.Addr = ":2935"
+	server.Addr = ":1935"
 
 	server.HandlePublish = func(conn *rtmp.Conn) {
 
@@ -172,7 +172,7 @@ func main() {
 
 	router.LoadHTMLFiles("./index.html")
 	router.GET("/", index)
-	router.POST("/api/pullstream", pullstream)
+	router.POST("/rtc/v1/play", pullstream)
 
 	router.Run(":8000")
 

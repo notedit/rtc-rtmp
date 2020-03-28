@@ -18,12 +18,15 @@
 
         window.localStorage.setItem('debug', '*');
 
+
         let videoElement;
 
         async function connect()
         {
 
             videoElement = document.getElementById('video_container');
+            let streamurl =  document.getElementById("streamurl").value;
+
             var pc = new RTCPeerConnection();
 
             await pc.addTransceiver('audio', {direction:'recvonly'});
@@ -43,12 +46,15 @@
                 },0)
             }
 
+
             const data = {
-                streamurl: 'fafafafa',
+                streamurl: streamurl,
                 sdp: offer.sdp
             }
 
-            let res = await fetch('http://127.0.0.1:8000/api/pullstream', {
+            console.log("request data", data)
+
+            let res = await fetch('http://127.0.0.1:8000/rtc/v1/play', {
                 method: 'post',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -77,6 +83,16 @@
 <h1>RTCLive Demo</h1>
 <br/>
 
+
+<div>
+    <form>
+        <input type="text" size="50" id="streamurl" name="streamurl" value="webrtc://localhost/live/live"><br><br>
+    </form>
+    <button onclick="connect()">Play</button>
+</div>
+
+
+
 <div id="conference">
     videos:
     <br />
@@ -85,7 +101,7 @@
     </div>
     <br/>
 
-    <button onclick="connect()">pullstream</button>
+
 </div>
 </body>
 
