@@ -46,6 +46,11 @@ func NewRTCTransport(id string) (*RTCTransport, error) {
 
 	s := webrtc.SettingEngine{}
 	s.SetConnectionTimeout(10*time.Second, 2*time.Second)
+	s.SetLite(true)
+	s.SetTrickle(false)
+	ips := []string{"172.20.10.3"}
+	s.SetNAT1To1IPs(ips, webrtc.ICECandidateTypeHost)
+
 	m := webrtc.MediaEngine{}
 	m.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
 	m.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb))
