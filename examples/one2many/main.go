@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/url"
 	"sync"
@@ -21,6 +22,9 @@ type Channel struct {
 var channels = map[string]*Channel{}
 
 var routers = map[string]*rtcrtmp.RTCRouter{}
+
+var endpoint string
+
 
 func startRtmp() {
 
@@ -153,7 +157,7 @@ func pullstream(c *gin.Context) {
 
 	fmt.Println("pullURL ===", pullURL)
 
-	router, err := rtcrtmp.NewRTCRouter(pullURL)
+	router, err := rtcrtmp.NewRTCRouter(pullURL, endpoint)
 
 	if err != nil {
 		fmt.Println("error", err)
@@ -197,7 +201,16 @@ func pullstream(c *gin.Context) {
 
 func main() {
 
-	go startRtmp()
+
+	flag.StringVar(&endpoint, "endpoint", "", "ip address")
+	flag.Parse()
+
+	if endpoint == "" {
+		fmt.Println("does not set ip  address")
+		return
+	}
+
+	fmt.Println("endpoint： ", endpoint)
 
 	router := gin.Default()
 
@@ -209,6 +222,8 @@ func main() {
 	router.LoadHTMLFiles("./index.html")
 	router.GET("/", index)
 	router.POST("/rtc/v1/play", pullstream)
+
+	go startRtmp()
 
 	router.Run(":8000")
 

@@ -12,25 +12,26 @@ import (
 )
 
 type RTCTransport struct {
-	id          string
-	mediaEngine webrtc.MediaEngine
-	api         *webrtc.API
-	pc          *webrtc.PeerConnection
-	videoTrack  *webrtc.Track
-	audioTrack  *webrtc.Track
+	id         string
+	media      webrtc.MediaEngine
+	api        *webrtc.API
+	pc         *webrtc.PeerConnection
+	videoTrack *webrtc.Track
+	audioTrack *webrtc.Track
 
 	videoBuffer *RTPBuffer
 	audioBuffer *RTPBuffer
 
-	connected  bool
+	connected bool
 
-	localSDP  string
-	remoteSDP string
+	endpoint  string
+	localsdp  string
+	remotesdp string
 	stop      bool
 	sync.RWMutex
 }
 
-func NewRTCTransport(id string) (*RTCTransport, error) {
+func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
 
 	rtcpfb := []webrtc.RTCPFeedback{
 		webrtc.RTCPFeedback{
@@ -48,7 +49,7 @@ func NewRTCTransport(id string) (*RTCTransport, error) {
 	s.SetConnectionTimeout(10*time.Second, 2*time.Second)
 	s.SetLite(true)
 	s.SetTrickle(false)
-	ips := []string{"127.0.0.1"}
+	ips := []string{endpoint}
 	s.SetNAT1To1IPs(ips, webrtc.ICECandidateTypeHost)
 
 	m := webrtc.MediaEngine{}
@@ -65,10 +66,11 @@ func NewRTCTransport(id string) (*RTCTransport, error) {
 	pc, _ := api.NewPeerConnection(config)
 
 	transport := &RTCTransport{
-		id:          id,
-		mediaEngine: m,
-		api:         api,
-		pc:          pc,
+		id:       id,
+		media:    m,
+		api:      api,
+		pc:       pc,
+		endpoint: endpoint,
 	}
 
 	streamID := uuid.NewV4().String()
@@ -84,9 +86,7 @@ func NewRTCTransport(id string) (*RTCTransport, error) {
 		return nil, err
 	}
 
-
 	pc.OnConnectionStateChange(transport.onConnectionState)
-
 
 	pc.AddTransceiverFromTrack(audioTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 	pc.AddTransceiverFromTrack(videoTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
@@ -111,7 +111,7 @@ func (self *RTCTransport) GetLocalSDP(sdpType webrtc.SDPType) (string, error) {
 	var sdp webrtc.SessionDescription
 	var err error
 
-	if self.localSDP == "" {
+	if self.localsdp == "" {
 		if sdpType == webrtc.SDPTypeOffer {
 			sdp, err = self.pc.CreateOffer(nil)
 
@@ -119,20 +119,20 @@ func (self *RTCTransport) GetLocalSDP(sdpType webrtc.SDPType) (string, error) {
 			sdp, err = self.pc.CreateAnswer(nil)
 		}
 		err = self.pc.SetLocalDescription(sdp)
-		self.localSDP = sdp.SDP
+		self.localsdp = sdp.SDP
 	}
 
-	return self.localSDP, err
+	return self.localsdp, err
 }
 
-func (self *RTCTransport) SetRemoteSDP(sdpStr string, sdpType webrtc.SDPType) error {
+func (self *RTCTransport) SetRemoteSDP(sdpstr string, sdpType webrtc.SDPType) error {
 
 	if self.pc == nil {
 		return fmt.Errorf("peerconnection does not init yet")
 	}
 
-	self.remoteSDP = sdpStr
-	sdp := webrtc.SessionDescription{SDP: sdpStr, Type: sdpType}
+	self.remotesdp = sdpstr
+	sdp := webrtc.SessionDescription{SDP: sdpstr, Type: sdpType}
 	err := self.pc.SetRemoteDescription(sdp)
 
 	return err
@@ -194,7 +194,6 @@ func (self *RTCTransport) handleOutgoingRTCP() {
 		}
 	}()
 }
-
 
 func (self *RTCTransport) onConnectionState(state webrtc.PeerConnectionState) {
 

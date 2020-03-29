@@ -17,7 +17,6 @@ import (
 	"time"
 )
 
-
 const (
 	DefaultOpusSSRC = 111111111
 	DefaultH264SSRC = 333333333
@@ -31,9 +30,9 @@ type RTCRouter struct {
 	streams    []av.CodecData
 	videoCodec h264.CodecData
 	audioCodec aac.CodecData
-	conn      *rtmp.Conn
+	conn       *rtmp.Conn
 
-	transform *transformer.Transformer
+	transform     *transformer.Transformer
 	lastVideoTime time.Duration
 	lastAudioTime time.Duration
 
@@ -42,11 +41,12 @@ type RTCRouter struct {
 
 	outTransports map[string]*RTCTransport
 
-	stop  bool
+	endpoint string
+	stop     bool
 	sync.RWMutex
 }
 
-func NewRTCRouter(streamURL string) (router *RTCRouter,err error) {
+func NewRTCRouter(streamURL string, endpoint string) (router *RTCRouter, err error) {
 
 	var u *url.URL
 	u, err = url.Parse(streamURL)
@@ -61,12 +61,11 @@ func NewRTCRouter(streamURL string) (router *RTCRouter,err error) {
 	}
 	streamID := streaminfo[len(streaminfo)-1]
 
-	conn, err := rtmp.DialTimeout(streamURL,3 *time.Second)
+	conn, err := rtmp.DialTimeout(streamURL, 3*time.Second)
 
 	if err != nil {
 		return
 	}
-
 
 	videoCodec := webrtc.NewRTPH264Codec(webrtc.DefaultPayloadTypeH264, 90000)
 	audioCodec := webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000)
@@ -78,7 +77,7 @@ func NewRTCRouter(streamURL string) (router *RTCRouter,err error) {
 		videoCodec.Payloader,
 		rtp.NewRandomSequencer(),
 		videoCodec.ClockRate,
-		)
+	)
 
 	audioPacketizer := rtp.NewPacketizer(
 		1200,
@@ -87,7 +86,7 @@ func NewRTCRouter(streamURL string) (router *RTCRouter,err error) {
 		audioCodec.Payloader,
 		rtp.NewRandomSequencer(),
 		audioCodec.ClockRate,
-		)
+	)
 
 	transform := &transformer.Transformer{}
 
@@ -97,38 +96,37 @@ func NewRTCRouter(streamURL string) (router *RTCRouter,err error) {
 	router.conn = conn
 	router.videoPacketizer = videoPacketizer
 	router.audioPacketizer = audioPacketizer
-	router.outTransports = make(map[string]*RTCTransport,0)
+	router.outTransports = make(map[string]*RTCTransport, 0)
 	router.transform = transform
-
+	router.endpoint = endpoint
 
 	go router.readPacket()
 
 	return
 }
 
-func (self *RTCRouter) CreateSubscriber() (*RTCTransport,error) {
+func (self *RTCRouter) CreateSubscriber() (*RTCTransport, error) {
 
 	id := uuid.NewV4().String()
-	transport,err := NewRTCTransport(id)
+	transport, err := NewRTCTransport(id, self.endpoint)
 
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	self.Lock()
 	self.outTransports[id] = transport
 	self.Unlock()
 
-	return transport,nil
+	return transport, nil
 }
 
 func (self *RTCRouter) StopSubscriber(transport *RTCTransport) {
 
 	self.Lock()
-	delete(self.outTransports,transport.ID())
+	delete(self.outTransports, transport.ID())
 	self.Unlock()
 }
-
 
 func (self *RTCRouter) readPacket() {
 
@@ -202,13 +200,13 @@ func (self *RTCRouter) readPacket() {
 
 		} else if stream.Type() == av.AAC {
 
-			pkts,err := self.transform.Do(packet)
+			pkts, err := self.transform.Do(packet)
 			if err != nil {
-				fmt.Println("transform error",err)
+				fmt.Println("transform error", err)
 				continue
 			}
 
-			for _,pkt := range pkts {
+			for _, pkt := range pkts {
 				packets := self.audioPacketizer.Packetize(pkt.Data, 960)
 				self.writePackets(packets)
 				self.lastAudioTime = pkt.Time
@@ -217,12 +215,12 @@ func (self *RTCRouter) readPacket() {
 	}
 }
 
-func (self *RTCRouter) writePackets(pkts []*rtp.Packet)  {
+func (self *RTCRouter) writePackets(pkts []*rtp.Packet) {
 	self.RLock()
 	defer self.RUnlock()
 
-	for _,pkt := range pkts {
-		for _,transport := range self.outTransports {
+	for _, pkt := range pkts {
+		for _, transport := range self.outTransports {
 			transport.WriteRTP(pkt)
 		}
 	}
@@ -238,13 +236,9 @@ func (self *RTCRouter) Stop() (err error) {
 	self.Lock()
 	defer self.Unlock()
 
-	for _,transport := range self.outTransports {
+	for _, transport := range self.outTransports {
 		transport.Stop()
 	}
 	self.outTransports = nil
 	return
 }
-
-
-
-
