@@ -5,6 +5,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
+	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
 	"io"
 	"sync"
@@ -89,7 +90,7 @@ func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
 	pc.OnConnectionStateChange(transport.onConnectionState)
 
 	pc.AddTransceiverFromTrack(audioTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
-	pc.AddTransceiverFromTrack(videoTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
+	videoTransceiver, _ := pc.AddTransceiverFromTrack(videoTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 
 	transport.audioTrack = audioTrack
 	transport.videoTrack = videoTrack
@@ -97,7 +98,8 @@ func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
 	transport.videoBuffer = NewRTPBuffer(512)
 	transport.audioBuffer = NewRTPBuffer(512)
 
-	transport.handleOutgoingRTCP()
+	//transport.handleRTCP(audioTransceiver.Sender())
+	transport.handleRTCP(videoTransceiver.Sender())
 
 	return transport, nil
 }
@@ -166,9 +168,10 @@ func (self *RTCTransport) Stop() (err error) {
 	return
 }
 
-func (self *RTCTransport) handleOutgoingRTCP() {
+
+func (self *RTCTransport) handleRTCP(sender *webrtc.RTPSender) {
 	go func() {
-		for _, sender := range self.pc.GetSenders() {
+		for {
 			if self.stop {
 				return
 			}
@@ -182,13 +185,21 @@ func (self *RTCTransport) handleOutgoingRTCP() {
 				switch pkt.(type) {
 				case *rtcp.TransportLayerNack:
 					nack := pkt.(*rtcp.TransportLayerNack)
+					log.Debug().Msg(nack.String())
 					for _, nackPair := range nack.Nacks {
-						fmt.Println("nack ", nack.MediaSSRC, nackPair.PacketID)
+						rtpPkt := self.videoBuffer.Get(nackPair.PacketID)
+						if rtpPkt != nil {
+							self.videoTrack.WriteRTP(rtpPkt)
+							continue
+						}
+						log.Debug().Msgf("rtp buffer can not find  %d", nackPair.PacketID)
 					}
 				case *rtcp.PictureLossIndication:
-					fmt.Println("pli")
-				default:
-					fmt.Println("rtcp ==== ")
+					pli := pkt.(*rtcp.PictureLossIndication)
+					log.Debug().Msg(pli.String())
+				case *rtcp.ReceiverReport:
+					report := pkt.(*rtcp.ReceiverReport)
+					log.Debug().Msg(report.String())
 				}
 			}
 		}
@@ -196,9 +207,9 @@ func (self *RTCTransport) handleOutgoingRTCP() {
 }
 
 func (self *RTCTransport) onConnectionState(state webrtc.PeerConnectionState) {
-
+	
 	if state == webrtc.PeerConnectionStateConnected {
 		self.connected = true
-		fmt.Println("PeerConnectionStateConnected ==========")
+		log.Debug().Msg("peerconnection connected")
 	}
 }
