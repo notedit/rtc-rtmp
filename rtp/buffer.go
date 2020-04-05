@@ -1,8 +1,6 @@
-package rtcrtmp
+package rtp
 
-import (
-	"github.com/pion/rtp"
-)
+import "github.com/pion/rtp"
 
 type RTPBuffer struct {
 	ssrc uint32

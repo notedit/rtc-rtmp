@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+	rtputil "github.com/notedit/rtc-rtmp/rtp"
 	"github.com/pion/webrtc/v2"
 	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
@@ -20,8 +21,8 @@ type RTCTransport struct {
 	videoTrack *webrtc.Track
 	audioTrack *webrtc.Track
 
-	videoBuffer *RTPBuffer
-	audioBuffer *RTPBuffer
+	videoBuffer *rtputil.RTPBuffer
+	audioBuffer *rtputil.RTPBuffer
 
 	connected bool
 
@@ -95,8 +96,8 @@ func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
 	transport.audioTrack = audioTrack
 	transport.videoTrack = videoTrack
 
-	transport.videoBuffer = NewRTPBuffer(512)
-	transport.audioBuffer = NewRTPBuffer(512)
+	transport.videoBuffer = rtputil.NewRTPBuffer(512)
+	transport.audioBuffer = rtputil.NewRTPBuffer(512)
 
 	//transport.handleRTCP(audioTransceiver.Sender())
 	transport.handleRTCP(videoTransceiver.Sender())
@@ -188,7 +189,7 @@ func (self *RTCTransport) handleRTCP(sender *webrtc.RTPSender) {
 					//log.Debug().Msg(nack.String())
 					for _, nackPair := range nack.Nacks {
 
-						fmt.Println("nack length ====", nackPair.PacketList())
+						fmt.Println("nack  ====", nackPair.PacketList())
 
 						for _,seq := range nackPair.PacketList() {
 							rtpPkt := self.videoBuffer.Get(seq)

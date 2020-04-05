@@ -1,4 +1,4 @@
-package transformer
+package trans
 
 import (
 	"github.com/notedit/rtmp-lib/audio"

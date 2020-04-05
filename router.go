@@ -3,7 +3,7 @@ package rtcrtmp
 import (
 	"bytes"
 	"fmt"
-	"github.com/notedit/rtc-rtmp/transformer"
+	"github.com/notedit/rtc-rtmp/trans"
 	"github.com/notedit/rtmp-lib"
 	"github.com/notedit/rtmp-lib/aac"
 	"github.com/notedit/rtmp-lib/av"
@@ -32,7 +32,7 @@ type RTCRouter struct {
 	audioCodec aac.CodecData
 	conn       *rtmp.Conn
 
-	transform     *transformer.Transformer
+	transform     *trans.Transformer
 	lastVideoTime time.Duration
 	lastAudioTime time.Duration
 
@@ -88,7 +88,7 @@ func NewRTCRouter(streamURL string, endpoint string) (router *RTCRouter, err err
 		audioCodec.ClockRate,
 	)
 
-	transform := &transformer.Transformer{}
+	transform := &trans.Transformer{}
 
 	router = &RTCRouter{}
 	router.streamURL = streamURL

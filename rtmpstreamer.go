@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/notedit/rtc-rtmp/transformer"
+	"github.com/notedit/rtc-rtmp/trans"
 	"github.com/notedit/rtmp-lib"
 	"github.com/notedit/rtmp-lib/aac"
 	"github.com/notedit/rtmp-lib/av"
@@ -24,7 +24,7 @@ type RtmpStreamer struct {
 	adtsheader []byte
 	spspps     bool
 
-	transform *transformer.Transformer
+	transform *trans.Transformer
 
 	audioTrack *webrtc.Track
 	videoTrack *webrtc.Track
@@ -41,7 +41,7 @@ type RtmpStreamer struct {
 	closed    bool
 }
 
-func NewRtmpRtcStreamer(streamURL string) (*RtmpStreamer, error) {
+func NewRtmpStreamer(streamURL string) (*RtmpStreamer, error) {
 
 	config := webrtc.Configuration{
 		ICEServers:   []webrtc.ICEServer{},
@@ -77,7 +77,7 @@ func NewRtmpRtcStreamer(streamURL string) (*RtmpStreamer, error) {
 	peerConnection.AddTransceiverFromTrack(audioTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 	peerConnection.AddTransceiverFromTrack(videoTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 
-	transform := &transformer.Transformer{}
+	transform := &trans.Transformer{}
 
 	streamer := &RtmpStreamer{}
 	streamer.pc = peerConnection

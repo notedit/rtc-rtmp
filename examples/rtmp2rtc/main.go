@@ -126,7 +126,7 @@ func pullstream(c *gin.Context) {
 		return
 	}
 
-	streamer, err := rtcrtmp.NewRtmpRtcStreamer("rtmp://localhost:2935/live/live")
+	streamer, err := rtcrtmp.NewRtmpStreamer("rtmp://localhost:2935/live/live")
 
 	if err != nil {
 		fmt.Println("error", err)
