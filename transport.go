@@ -185,21 +185,27 @@ func (self *RTCTransport) handleRTCP(sender *webrtc.RTPSender) {
 				switch pkt.(type) {
 				case *rtcp.TransportLayerNack:
 					nack := pkt.(*rtcp.TransportLayerNack)
-					log.Debug().Msg(nack.String())
+					//log.Debug().Msg(nack.String())
 					for _, nackPair := range nack.Nacks {
-						rtpPkt := self.videoBuffer.Get(nackPair.PacketID)
-						if rtpPkt != nil {
-							self.videoTrack.WriteRTP(rtpPkt)
-							continue
+
+						fmt.Println("nack length ====", nackPair.PacketList())
+
+						for _,seq := range nackPair.PacketList() {
+							rtpPkt := self.videoBuffer.Get(seq)
+							if rtpPkt != nil {
+								//log.Debug().Msgf("ssrc %d  packet seq %d", nack.SenderSSRC, nackPair.LostPackets())
+								self.videoTrack.WriteRTP(rtpPkt)
+								continue
+							}
+							log.Debug().Msgf("rtp buffer can not find  %d", seq)
 						}
-						log.Debug().Msgf("rtp buffer can not find  %d", nackPair.PacketID)
 					}
 				case *rtcp.PictureLossIndication:
 					pli := pkt.(*rtcp.PictureLossIndication)
 					log.Debug().Msg(pli.String())
 				case *rtcp.ReceiverReport:
-					report := pkt.(*rtcp.ReceiverReport)
-					log.Debug().Msg(report.String())
+					//report := pkt.(*rtcp.ReceiverReport)
+					//log.Debug().Msg(report.String())
 				}
 			}
 		}
