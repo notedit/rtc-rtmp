@@ -41,11 +41,17 @@ func (self *RTPLostPackets) AddPacket(packet *rtp.Packet) int {
 	index := packet.SequenceNumber % kMaxNackNumber
 	self.seqNums[index] = packet.SequenceNumber
 
-	if packet.SequenceNumber <= self.latestSeq {
+	if packet.SequenceNumber == self.latestSeq {
 		return 0
 	}
 
+
+
 	if packet.SequenceNumber > self.latestSeq && (packet.SequenceNumber-self.latestSeq) > 0x0fff {
+		return 0
+	}
+
+	if packet.SequenceNumber < self.latestSeq && (self.latestSeq-packet.SequenceNumber) < 0x0fff {
 		return 0
 	}
 
@@ -53,8 +59,9 @@ func (self *RTPLostPackets) AddPacket(packet *rtp.Packet) int {
 	for seq := self.latestSeq + 1; seq < packet.SequenceNumber; seq++ {
 		self.nackList = append(self.nackList, NackInfo{seq, now, 0})
 	}
-
+	
 	lossNum := int(packet.SequenceNumber - self.latestSeq - 1)
+	self.latestSeq = packet.SequenceNumber
 	return lossNum
 }
 
