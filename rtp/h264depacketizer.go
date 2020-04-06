@@ -18,6 +18,7 @@ func NewH264Depacketizer() *H264Depacketizer {
 }
 
 
+// TODO
 func (self *H264Depacketizer) Depacket(packet []byte)  ([][]byte, bool) {
 	nalTyp := packet[0] & 0x1f
 	if nalTyp == nalTypeFuA {
