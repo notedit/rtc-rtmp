@@ -16,7 +16,6 @@ import (
 
 var naluHeader = []byte{0, 0, 0, 1}
 
-
 type RtmpStreamer struct {
 	streams    []av.CodecData
 	videoCodec h264.CodecData
@@ -103,6 +102,7 @@ func (r *RtmpStreamer) GetLocalSDP(sdpType webrtc.SDPType) (string, error) {
 		} else {
 			sdp, err = r.pc.CreateAnswer(nil)
 		}
+		fmt.Println("GetLocalSDP err:", err)
 		err = r.pc.SetLocalDescription(sdp)
 		r.localSDP = sdp.SDP
 	}
@@ -118,7 +118,6 @@ func (r *RtmpStreamer) SetRemoteSDP(sdpStr string, sdpType webrtc.SDPType) error
 
 	return err
 }
-
 
 func (r *RtmpStreamer) onConnectionState(state webrtc.PeerConnectionState) {
 
@@ -177,6 +176,7 @@ func (r *RtmpStreamer) PullStream() {
 	for {
 		packet, err := conn.ReadPacket()
 		if err != nil {
+			fmt.Println("rtmp read packet err:", err)
 			break
 		}
 
@@ -222,13 +222,13 @@ func (r *RtmpStreamer) PullStream() {
 
 		} else if stream.Type() == av.AAC {
 
-			pkts,err := r.transform.Do(packet)
+			pkts, err := r.transform.Do(packet)
 			if err != nil {
-				fmt.Println("transform error",err)
+				fmt.Println("transform error", err)
 				continue
 			}
 
-			for _,pkt := range pkts {
+			for _, pkt := range pkts {
 				packets := r.audioTrack.Packetizer().Packetize(pkt.Data, 960)
 				for _, p := range packets {
 					err := r.audioTrack.WriteRTP(p)
@@ -244,4 +244,3 @@ func (r *RtmpStreamer) PullStream() {
 		}
 	}
 }
-

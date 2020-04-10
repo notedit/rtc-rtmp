@@ -7,9 +7,12 @@ require (
 	github.com/gin-gonic/gin v1.5.0
 	github.com/notedit/go-fdkaac v0.0.0-20200307100649-833bc3aabc30 // indirect
 	github.com/notedit/rtmp-lib v0.0.7
+	github.com/pion/logging v0.2.2
 	github.com/pion/rtcp v1.2.1
 	github.com/pion/rtp v1.3.2
+	github.com/pion/sdp/v2 v2.3.4
 	github.com/pion/webrtc/v2 v2.2.3
+	github.com/prometheus/common v0.9.1
 	github.com/rs/zerolog v1.18.0
 	github.com/satori/go.uuid v1.2.0
 	layeh.com/gopus v0.0.0-20161224163843-0ebf989153aa

@@ -3,6 +3,11 @@ package rtcrtmp
 import (
 	"bytes"
 	"fmt"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/notedit/rtc-rtmp/trans"
 	"github.com/notedit/rtmp-lib"
 	"github.com/notedit/rtmp-lib/aac"
@@ -11,10 +16,6 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 	uuid "github.com/satori/go.uuid"
-	"net/url"
-	"strings"
-	"sync"
-	"time"
 )
 
 const (
@@ -108,7 +109,7 @@ func NewRTCRouter(streamURL string, endpoint string) (router *RTCRouter, err err
 func (self *RTCRouter) CreateSubscriber() (*RTCTransport, error) {
 
 	id := uuid.NewV4().String()
-	transport, err := NewRTCTransport(id, self.endpoint)
+	transport, err := NewRTCTransport(id, self.endpoint, self.StopSubscriber)
 
 	if err != nil {
 		return nil, err
@@ -122,7 +123,7 @@ func (self *RTCRouter) CreateSubscriber() (*RTCTransport, error) {
 }
 
 func (self *RTCRouter) StopSubscriber(transport *RTCTransport) {
-
+	fmt.Println("StopSubscriber")
 	self.Lock()
 	delete(self.outTransports, transport.ID())
 	self.Unlock()

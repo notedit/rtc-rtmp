@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+    <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
+    <title> webrtc test  </title>
+    <style type="text/css">
+        .room {
+            cursor: pointer;
+        }
+        div.select {
+            display: inline-block;
+            margin: 0 0 1em 0;
+        }
+    </style>
+
+
+    <script type='text/javascript'>
+
+        window.localStorage.setItem('debug', '*');
+
+        let url = new URL(document.URL);
+
+        console.dir(url);
+
+        let videoElement;
+
+        async function connect()
+        {
+
+            videoElement = document.getElementById('video_container');
+            let streamurl =  document.getElementById("streamurl").value;
+
+            var pc = new RTCPeerConnection();
+
+            await pc.addTransceiver('audio', {direction:'recvonly'});
+            await pc.addTransceiver('video', {direction:'recvonly'});
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            pc.ontrack = (event) => {
+                console.dir(event);
+                setTimeout(() => {
+                    if (videoElement.srcObject) {
+                        return
+                    }
+                    let stream = event.streams[0]
+                    videoElement.srcObject = stream;
+                },0)
+            }
+
+
+            const data = {
+                streamurl: streamurl,
+                sdp: offer.sdp
+            }
+
+            console.log("request data", data)
+
+            let res = await fetch('http://10.170.211.142:3888/rtclive/v1/play', {
+                method: 'post',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+
+            console.dir(res)
+            let ret = await res.json()
+
+            console.dir(ret)
+
+            const { sdp, sessionid } = ret.d
+
+            let answer = new RTCSessionDescription({
+                type: 'answer',
+                sdp: sdp
+            })
+
+            await pc.setRemoteDescription(answer);
+
+        }
+
+    </script>
+
+</head>
+<body >
+<h1>RTCLive Demo</h1>
+<br/>
+
+
+<div>
+    <form>
+        <input type="text" size="50" id="streamurl" name="streamurl" value="webrtc://xrtc.wangxiao.com/live/live?xhost=192.168.186.129:3888"><br><br>
+    </form>
+    <button onclick="connect()">Play</button>
+</div>
+
+
+
+<div id="conference">
+    videos:
+    <br />
+    <div id="container">
+        <video id="video_container" playsinline controls autoplay muted width="640" height="480"></video>
+    </div>
+    <br/>
+
+
+</div>
+</body>
+
+
+</html>

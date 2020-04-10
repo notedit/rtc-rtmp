@@ -2,15 +2,16 @@ package rtcrtmp
 
 import (
 	"fmt"
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
-	rtputil "github.com/notedit/rtc-rtmp/rtp"
-	"github.com/pion/webrtc/v2"
-	"github.com/rs/zerolog/log"
-	uuid "github.com/satori/go.uuid"
 	"io"
 	"sync"
 	"time"
+
+	rtputil "github.com/notedit/rtc-rtmp/rtp"
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+	"github.com/pion/webrtc/v2"
+	"github.com/rs/zerolog/log"
+	uuid "github.com/satori/go.uuid"
 )
 
 type RTCTransport struct {
@@ -33,7 +34,7 @@ type RTCTransport struct {
 	sync.RWMutex
 }
 
-func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
+func NewRTCTransport(id string, endpoint string, timeout func(*RTCTransport)) (*RTCTransport, error) {
 
 	rtcpfb := []webrtc.RTCPFeedback{
 		webrtc.RTCPFeedback{
@@ -90,7 +91,7 @@ func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
 
 	pc.OnConnectionStateChange(transport.onConnectionState)
 
-	pc.AddTransceiverFromTrack(audioTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
+	audioTransceiver, _ := pc.AddTransceiverFromTrack(audioTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 	videoTransceiver, _ := pc.AddTransceiverFromTrack(videoTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 
 	transport.audioTrack = audioTrack
@@ -99,8 +100,18 @@ func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
 	transport.videoBuffer = rtputil.NewRTPBuffer(512)
 	transport.audioBuffer = rtputil.NewRTPBuffer(512)
 
-	//transport.handleRTCP(audioTransceiver.Sender())
+	transport.handleRTCP(audioTransceiver.Sender())
 	transport.handleRTCP(videoTransceiver.Sender())
+	go func() {
+		for {
+			<-time.After(8 * time.Second) // 8surn
+			if !transport.connected {
+				fmt.Println("transport ----- timeout")
+				timeout(transport)
+				break
+			}
+		}
+	}()
 
 	return transport, nil
 }
@@ -121,6 +132,7 @@ func (self *RTCTransport) GetLocalSDP(sdpType webrtc.SDPType) (string, error) {
 		} else {
 			sdp, err = self.pc.CreateAnswer(nil)
 		}
+		fmt.Println("GetLocalSDP err:", err, sdp)
 		err = self.pc.SetLocalDescription(sdp)
 		self.localsdp = sdp.SDP
 	}
@@ -144,7 +156,7 @@ func (self *RTCTransport) SetRemoteSDP(sdpstr string, sdpType webrtc.SDPType) er
 func (self *RTCTransport) WriteRTP(packet *rtp.Packet) (err error) {
 
 	if !self.connected {
-		fmt.Println("transport does not connected ========")
+		//fmt.Println("transport does not connected ========")
 		return
 	}
 
@@ -169,7 +181,6 @@ func (self *RTCTransport) Stop() (err error) {
 	return
 }
 
-
 func (self *RTCTransport) handleRTCP(sender *webrtc.RTPSender) {
 	go func() {
 		for {
@@ -191,7 +202,7 @@ func (self *RTCTransport) handleRTCP(sender *webrtc.RTPSender) {
 
 						fmt.Println("nack  ====", nackPair.PacketList())
 
-						for _,seq := range nackPair.PacketList() {
+						for _, seq := range nackPair.PacketList() {
 							rtpPkt := self.videoBuffer.Get(seq)
 							if rtpPkt != nil {
 								//log.Debug().Msgf("ssrc %d  packet seq %d", nack.SenderSSRC, nackPair.LostPackets())
@@ -214,7 +225,7 @@ func (self *RTCTransport) handleRTCP(sender *webrtc.RTPSender) {
 }
 
 func (self *RTCTransport) onConnectionState(state webrtc.PeerConnectionState) {
-	
+
 	if state == webrtc.PeerConnectionStateConnected {
 		self.connected = true
 		log.Debug().Msg("peerconnection connected")

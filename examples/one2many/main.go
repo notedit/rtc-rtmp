@@ -13,6 +13,7 @@ import (
 	"github.com/notedit/rtmp-lib/av"
 	"github.com/notedit/rtmp-lib/pubsub"
 	"github.com/pion/webrtc/v2"
+	"github.com/prometheus/common/log"
 )
 
 type Channel struct {
@@ -25,13 +26,15 @@ var routers = map[string]*rtcrtmp.RTCRouter{}
 
 var endpoint string
 
+var pullOriginMutex sync.Mutex
+var originRouters = map[string]*rtcrtmp.RTCRouter{}
 
 func startRtmp() {
 
 	l := &sync.RWMutex{}
 
 	server := rtmp.NewServer(1024)
-	server.Addr = ":1935"
+	server.Addr = ":3888"
 
 	server.HandlePublish = func(conn *rtmp.Conn) {
 
@@ -199,8 +202,84 @@ func pullstream(c *gin.Context) {
 	})
 }
 
-func main() {
+func pullOrigin(c *gin.Context) {
 
+	var data struct {
+		SDP       string `json:"sdp"`
+		StreamURL string `json:"streamurl"`
+	}
+
+	if err := c.ShouldBind(&data); err != nil {
+		fmt.Println(err)
+		c.JSON(200, gin.H{
+			"s": 10001,
+			"e": err,
+		})
+		return
+	}
+
+	u, err := url.Parse(data.StreamURL)
+	h := u.Host
+	q, _ := url.ParseQuery(u.RawQuery)
+	xhost, ok := q["xhost"]
+	if ok {
+		h = xhost[0]
+	}
+	pullURL := "rtmp://" + h + u.Path
+	log.Info("pull stream, streamurl:", u, ",host:", h, ",path:", u.Path, ",back to source url:", pullURL)
+	log.Info("back to source sdp:", data.SDP)
+
+	pullOriginMutex.Lock()
+	router, ok := originRouters[pullURL]
+	if !ok {
+		r, err := rtcrtmp.NewRTCRouter(pullURL, endpoint)
+		if err != nil {
+			fmt.Println("error 1", err)
+			c.JSON(200, gin.H{
+				"s": 10001,
+				"e": err,
+			})
+			pullOriginMutex.Unlock()
+			return
+		}
+
+		router = r
+		routers[pullURL] = r
+	}
+	pullOriginMutex.Unlock()
+
+	transport, err := router.CreateSubscriber()
+
+	if err != nil {
+		fmt.Println("error 2", err)
+		c.JSON(200, gin.H{
+			"s": 10001,
+			"e": err,
+		})
+		return
+	}
+
+	err = transport.SetRemoteSDP(data.SDP, webrtc.SDPTypeOffer)
+	sdp, err := transport.GetLocalSDP(webrtc.SDPTypeAnswer)
+
+	if err != nil {
+		fmt.Println("error 3", err)
+		c.JSON(200, gin.H{
+			"s": 10001,
+			"e": err,
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"s": 10000,
+		"d": map[string]string{
+			"sdp": sdp,
+		},
+	})
+}
+
+func main() {
 
 	flag.StringVar(&endpoint, "endpoint", "", "ip address")
 	flag.Parse()
@@ -221,10 +300,10 @@ func main() {
 
 	router.LoadHTMLFiles("./index.html")
 	router.GET("/", index)
-	router.POST("/rtc/v1/play", pullstream)
+	router.POST("/rtc/v1/play", pullOrigin)
+	//router.POST("/rtc/v1/play", pullstream)
 
 	go startRtmp()
 
-	router.Run(":8000")
-
+	router.Run(":6000")
 }
