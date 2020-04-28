@@ -2,9 +2,9 @@ package rtcrtmp
 
 import (
 	"fmt"
+	rtputil "github.com/notedit/rtc-rtmp/rtp"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
-	rtputil "github.com/notedit/rtc-rtmp/rtp"
 	"github.com/pion/webrtc/v2"
 	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
@@ -195,7 +195,7 @@ func (self *RTCTransport) handleRTCP(sender *webrtc.RTPSender) {
 							rtpPkt := self.videoBuffer.Get(seq)
 							if rtpPkt != nil {
 								//log.Debug().Msgf("ssrc %d  packet seq %d", nack.SenderSSRC, nackPair.LostPackets())
-								self.videoTrack.WriteRTP(rtpPkt)
+								//self.videoTrack.WriteRTP(rtpPkt)
 								continue
 							}
 							log.Debug().Msgf("rtp buffer can not find  %d", seq)

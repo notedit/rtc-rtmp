@@ -166,6 +166,8 @@ func (self *RTCRouter) readPacket() {
 			break
 		}
 
+		fmt.Println("router ", packet.Time)
+
 		stream := self.streams[packet.Idx]
 
 		if stream.Type().IsVideo() {
@@ -200,17 +202,17 @@ func (self *RTCRouter) readPacket() {
 
 		} else if stream.Type() == av.AAC {
 
-			pkts, err := self.transform.Do(packet)
-			if err != nil {
-				fmt.Println("transform error", err)
-				continue
-			}
-
-			for _, pkt := range pkts {
-				packets := self.audioPacketizer.Packetize(pkt.Data, 960)
-				self.writePackets(packets)
-				self.lastAudioTime = pkt.Time
-			}
+			//pkts, err := self.transform.Do(packet)
+			//if err != nil {
+			//	fmt.Println("transform error", err)
+			//	continue
+			//}
+			//
+			//for _, pkt := range pkts {
+			//	packets := self.audioPacketizer.Packetize(pkt.Data, 960)
+			//	self.writePackets(packets)
+			//	self.lastAudioTime = pkt.Time
+			//}
 		}
 	}
 }

@@ -62,6 +62,8 @@ github.com/notedit/rtmp-lib v0.0.3-0.20200309062900-a914a734466a h1:4fYZNwwA19cZ
 github.com/notedit/rtmp-lib v0.0.3-0.20200309062900-a914a734466a/go.mod h1:cl/gxGNF2sCF+qpH/1fjPh1kOKZ8KG9QF6PtCnsQ41s=
 github.com/notedit/rtmp-lib v0.0.4 h1:jWqOvbGvA78LE/5kIXR9vwimBbfqPydNLks1/NgyOIc=
 github.com/notedit/rtmp-lib v0.0.4/go.mod h1:cl/gxGNF2sCF+qpH/1fjPh1kOKZ8KG9QF6PtCnsQ41s=
+github.com/notedit/rtmp-lib v0.0.7 h1:ot5QPUoBMtF6tiJWZfnHDwvKosEyi1TZxG34MEIzDM4=
+github.com/notedit/rtmp-lib v0.0.7/go.mod h1:cl/gxGNF2sCF+qpH/1fjPh1kOKZ8KG9QF6PtCnsQ41s=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0 h1:WSHQ+IS43OoUrWtD1/bbclrwK8TTH5hzp+umCiuxHgs=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=

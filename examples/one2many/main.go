@@ -30,7 +30,7 @@ func startRtmp() {
 
 	l := &sync.RWMutex{}
 
-	server := rtmp.NewServer(1024)
+	server := rtmp.NewServer(0)
 	server.Addr = ":1935"
 
 	server.HandlePublish = func(conn *rtmp.Conn) {
@@ -41,7 +41,6 @@ func startRtmp() {
 		if ch == nil {
 			ch = &Channel{}
 			ch.que = pubsub.NewQueue()
-			ch.que.SetMaxGopCount(1)
 			channels[conn.URL.Path] = ch
 		}
 		l.Unlock()
@@ -66,6 +65,7 @@ func startRtmp() {
 				break
 			}
 
+			fmt.Println("publish ", packet.Time)
 			ch.que.WritePacket(packet)
 		}
 

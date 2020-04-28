@@ -34,7 +34,6 @@ func startRtmp() {
 		if ch == nil {
 			ch = &Channel{}
 			ch.que = pubsub.NewQueue()
-			ch.que.SetMaxGopCount(1)
 			channels[conn.URL.Path] = ch
 		}
 		l.Unlock()
@@ -126,7 +125,7 @@ func pullstream(c *gin.Context) {
 		return
 	}
 
-	streamer, err := rtcrtmp.NewRtmpStreamer("rtmp://localhost:2935/live/live")
+	streamer, err := rtcrtmp.NewRtmpStreamer("rtmp://127.0.0.1/live/live")
 
 	if err != nil {
 		fmt.Println("error", err)

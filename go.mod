@@ -15,4 +15,4 @@ require (
 	layeh.com/gopus v0.0.0-20161224163843-0ebf989153aa
 )
 
-replace github.com/notedit/rtmp-lib v0.0.7 => ../rtmp-lib
+//replace github.com/notedit/rtmp-lib v0.0.7 => ../rtmp-lib
