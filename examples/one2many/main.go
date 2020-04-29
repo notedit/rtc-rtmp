@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -26,11 +27,19 @@ var routers = map[string]*rtcrtmp.RTCRouter{}
 var endpoint string
 
 
+var publishStream *rtmp.Conn
+var playStream *rtmp.Conn
+
+
 func startRtmp() {
 
 	l := &sync.RWMutex{}
 
-	server := rtmp.NewServer(0)
+	config := &rtmp.Config{
+		BufferSize:1024,
+	}
+
+	server := rtmp.NewServer(config)
 	server.Addr = ":1935"
 
 	server.HandlePublish = func(conn *rtmp.Conn) {
@@ -52,11 +61,11 @@ func startRtmp() {
 		var streams []av.CodecData
 
 		if streams, err = conn.Streams(); err != nil {
-			fmt.Println(err)
+			fmt.Println(err, streams)
 			return
 		}
 
-		ch.que.WriteHeader(streams)
+		publishStream = conn
 
 		for {
 			packet, err := conn.ReadPacket()
@@ -65,8 +74,9 @@ func startRtmp() {
 				break
 			}
 
-			fmt.Println("publish ", packet.Time)
-			ch.que.WritePacket(packet)
+			if playStream != nil {
+				playStream.WritePacket(packet)
+			}
 		}
 
 		l.Lock()
@@ -86,32 +96,20 @@ func startRtmp() {
 
 	server.HandlePlay = func(conn *rtmp.Conn) {
 
-		l.RLock()
-		ch := channels[conn.URL.Path]
-		l.RUnlock()
 
 		fmt.Println("play  ", conn.URL.Path)
 
-		if ch != nil {
-
-			cursor := ch.que.Latest()
-
-			streams, err := cursor.Streams()
-
-			if err != nil {
-				panic(err)
-			}
-
+		if publishStream != nil {
+			streams, _ := publishStream.Streams()
 			conn.WriteHeader(streams)
-
-			for {
-				packet, err := cursor.ReadPacket()
-				if err != nil {
-					break
-				}
-				conn.WritePacket(packet)
-			}
 		}
+
+		playStream = conn
+
+		for {
+			time.Sleep(time.Second)
+		}
+
 	}
 
 	err := server.ListenAndServe()

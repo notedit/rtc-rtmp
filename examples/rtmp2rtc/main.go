@@ -23,7 +23,10 @@ func startRtmp() {
 
 	l := &sync.RWMutex{}
 
-	server := rtmp.NewServer(1024)
+	config := &rtmp.Config{
+		BufferSize:1024,
+	}
+	server := rtmp.NewServer(config)
 	server.Addr = ":1935"
 
 	server.HandlePublish = func(conn *rtmp.Conn) {

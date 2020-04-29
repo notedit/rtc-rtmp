@@ -55,8 +55,8 @@ func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
 	s.SetNAT1To1IPs(ips, webrtc.ICECandidateTypeHost)
 
 	m := webrtc.MediaEngine{}
-	m.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
-	m.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb))
+	m.RegisterCodec(webrtc.NewRTPOpusCodec(OpusPayloadType, 48000))
+	m.RegisterCodec(webrtc.NewRTPH264CodecExt(H264PayloadTYpe, 90000, rtcpfb))
 	api := webrtc.NewAPI(webrtc.WithSettingEngine(s), webrtc.WithMediaEngine(m))
 
 	config := webrtc.Configuration{
@@ -76,13 +76,13 @@ func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
 	}
 
 	streamID := uuid.NewV4().String()
-	audioTrack, err := pc.NewTrack(webrtc.DefaultPayloadTypeOpus, DefaultOpusSSRC, uuid.NewV4().String(), streamID)
+	audioTrack, err := pc.NewTrack(OpusPayloadType, DefaultOpusSSRC, uuid.NewV4().String(), streamID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	videoTrack, err := pc.NewTrack(webrtc.DefaultPayloadTypeH264, DefaultH264SSRC, uuid.NewV4().String(), streamID)
+	videoTrack, err := pc.NewTrack(H264PayloadTYpe, DefaultH264SSRC, uuid.NewV4().String(), streamID)
 
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
 
 	pc.OnConnectionStateChange(transport.onConnectionState)
 
-	pc.AddTransceiverFromTrack(audioTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
+	audioTransceiver, _ := pc.AddTransceiverFromTrack(audioTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 	videoTransceiver, _ := pc.AddTransceiverFromTrack(videoTrack, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
 
 	transport.audioTrack = audioTrack
@@ -98,9 +98,9 @@ func NewRTCTransport(id string, endpoint string) (*RTCTransport, error) {
 
 	transport.videoBuffer = rtputil.NewRTPBuffer(512)
 	transport.audioBuffer = rtputil.NewRTPBuffer(512)
-
-	//transport.handleRTCP(audioTransceiver.Sender())
-	transport.handleRTCP(videoTransceiver.Sender())
+	
+	transport.handleAudioRTCP(audioTransceiver.Sender())
+	transport.handleVideoRTCP(videoTransceiver.Sender())
 
 	return transport, nil
 }
@@ -169,8 +169,43 @@ func (self *RTCTransport) Stop() (err error) {
 	return
 }
 
+func (self *RTCTransport) handleAudioRTCP(sender *webrtc.RTPSender) {
+	go func() {
+		for {
+			if self.stop {
+				return
+			}
+			pkts, err := sender.ReadRTCP()
+			if err != nil {
+				if err == io.EOF {
+					return
+				}
+			}
+			for _, pkt := range pkts {
+				switch pkt.(type) {
+				case *rtcp.TransportLayerNack:
+					nack := pkt.(*rtcp.TransportLayerNack)
+					//log.Debug().Msg(nack.String())
+					for _, nackPair := range nack.Nacks {
 
-func (self *RTCTransport) handleRTCP(sender *webrtc.RTPSender) {
+						for _, seq := range nackPair.PacketList() {
+							rtpPkt := self.audioBuffer.Get(seq)
+							if rtpPkt != nil {
+								//log.Debug().Msgf("ssrc %d  packet seq %d", nack.SenderSSRC, nackPair.LostPackets())
+								self.audioTrack.WriteRTP(rtpPkt)
+								continue
+							}
+							log.Debug().Msgf("rtp buffer can not find  %d", seq)
+						}
+					}
+				}
+
+			}
+		}
+	}()
+}
+
+func (self *RTCTransport) handleVideoRTCP(sender *webrtc.RTPSender) {
 	go func() {
 		for {
 			if self.stop {
@@ -191,7 +226,7 @@ func (self *RTCTransport) handleRTCP(sender *webrtc.RTPSender) {
 
 						fmt.Println("nack  ====", nackPair.PacketList())
 
-						for _,seq := range nackPair.PacketList() {
+						for _, seq := range nackPair.PacketList() {
 							rtpPkt := self.videoBuffer.Get(seq)
 							if rtpPkt != nil {
 								//log.Debug().Msgf("ssrc %d  packet seq %d", nack.SenderSSRC, nackPair.LostPackets())
@@ -214,7 +249,7 @@ func (self *RTCTransport) handleRTCP(sender *webrtc.RTPSender) {
 }
 
 func (self *RTCTransport) onConnectionState(state webrtc.PeerConnectionState) {
-	
+
 	if state == webrtc.PeerConnectionStateConnected {
 		self.connected = true
 		log.Debug().Msg("peerconnection connected")

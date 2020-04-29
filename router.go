@@ -20,7 +20,11 @@ import (
 const (
 	DefaultOpusSSRC = 111111111
 	DefaultH264SSRC = 333333333
+
+	OpusPayloadType = 111
+	H264PayloadTYpe = 127
 )
+
 
 var NALUHeader = []byte{0, 0, 0, 1}
 
@@ -67,8 +71,8 @@ func NewRTCRouter(streamURL string, endpoint string) (router *RTCRouter, err err
 		return
 	}
 
-	videoCodec := webrtc.NewRTPH264Codec(webrtc.DefaultPayloadTypeH264, 90000)
-	audioCodec := webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000)
+	videoCodec := webrtc.NewRTPH264Codec(H264PayloadTYpe, 90000)
+	audioCodec := webrtc.NewRTPOpusCodec(OpusPayloadType, 48000)
 
 	videoPacketizer := rtp.NewPacketizer(
 		1200,
@@ -202,17 +206,17 @@ func (self *RTCRouter) readPacket() {
 
 		} else if stream.Type() == av.AAC {
 
-			//pkts, err := self.transform.Do(packet)
-			//if err != nil {
-			//	fmt.Println("transform error", err)
-			//	continue
-			//}
-			//
-			//for _, pkt := range pkts {
-			//	packets := self.audioPacketizer.Packetize(pkt.Data, 960)
-			//	self.writePackets(packets)
-			//	self.lastAudioTime = pkt.Time
-			//}
+			pkts, err := self.transform.Do(packet)
+			if err != nil {
+				fmt.Println("transform error", err)
+				continue
+			}
+
+			for _, pkt := range pkts {
+				packets := self.audioPacketizer.Packetize(pkt.Data, 960)
+				self.writePackets(packets)
+				self.lastAudioTime = pkt.Time
+			}
 		}
 	}
 }
